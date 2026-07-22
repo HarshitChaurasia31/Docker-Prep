@@ -1,0 +1,78 @@
+Scenario: You're deploying a microservices architecture to AWS. Your CEO asks why you chose containers over VMs instead of using AWS EC2 directly with LAMP stacks.
+
+Task: Explain the architectural and cost advantages of Docker containers for this scenario. Provide specific technical reasons (memory, startup time, security isolation).
+
+Ans: I chose Docker containers over EC2 with traditional LAMP stacks because containers are lightweight, faster, and more cost-efficient for microservices.
+
+Memory: Containers share the host OS kernel, so they use much less RAM than VMs, allowing more services to run on the same EC2 instance.
+Startup Time: Containers start in seconds, while VMs take minutes to boot. This enables faster auto-scaling during traffic spikes.
+Security Isolation: Containers use Linux namespaces and cgroups for process and resource isolation. While not as isolated as VMs, they're secure enough for most microservices when combined with Docker security best practices.
+Cost: Better resource utilization means fewer EC2 instances are needed, reducing infrastructure costs.
+Microservices: Each service is packaged independently, making deployments, updates, and rollbacks simpler without affecting other services.
+
+Overall, Docker provides better scalability, faster deployments, and lower operational costs, which makes it a better fit for AWS microservices.
+
+Scenario: Your CI/CD pipeline is taking 45 minutes to build images during night builds. The team lead wants to understand why and how to optimize it.
+
+Task: Identify which Dockerfile commands would benefit most from layer caching. Provide a before/after example showing the cache optimization pattern.
+
+Ans: The main reason for slow Docker builds is poor layer caching. If we copy the entire source code before installing dependencies, any code change invalidates the cache, forcing Docker to reinstall dependencies every build.
+
+The commands that benefit the most from layer caching are:
+
+RUN npm install / npm ci
+apt-get install
+pip install
+Any long-running dependency installation step
+
+Before (Poor Caching):
+
+FROM node:20
+WORKDIR /app
+COPY . .
+RUN npm install
+RUN npm run build
+
+Any source code change invalidates the COPY layer, so npm install runs again.
+
+After (Optimized Caching):
+
+FROM node:20
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+RUN npm run build
+
+Now, npm ci is cached and only reruns if package.json or package-lock.json changes. Regular source code changes only rebuild the application, significantly reducing build time.
+
+Exercise 1.3: Image Size Optimization
+Scenario: Production containers are averaging 800MB in size due to multi-stage builds still including build-time dependencies. Your security team requires images under 500MB for cloud costs and security scanning speed.
+
+Task: Design a Dockerfile that reduces image size without losing functionality. Consider:
+
+Base image selection
+Multi-stage optimization
+Cleanup strategies
+What files should be excluded from the final image?
+
+Ans: # Builder Stage
+FROM node:20 AS builder
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+RUN npm run build
+
+# Production Stage
+FROM gcr.io/distroless/nodejs20
+WORKDIR /app
+
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+
+CMD ["dist/index.js"]
