@@ -30,3 +30,41 @@ Create a named volume for database persistence
 Bind mount development code directory (read-write)
 Test that data survives container restart
 Clean up without losing production data
+
+Ans:
+Docker create volume:docker volume create db-data
+
+Running database container with named volume:docker run -d --name mongodb -v db-data:/data/db mongo
+
+Bind Mount development code: docker run -d --name app -v ${pwd}:/app my-app
+
+Scenario: Your Node.js service is consuming 90% of host memory, causing other services to crash.
+
+Task:
+
+Inspect current resource limits using "docker stats"
+Modify the container to limit CPU to 50% and Memory to 512MB
+Monitor to verify enforcement kicks in at limits
+
+Ans:
+Modification for memory and cpu limits: docker run -d --name node-app --cpu='0.5' --memory='512m' my-node-app
+
+To check: docker inspect --format='{{.HostConfig.Memory}}' node-app
+          docker inspect --format='{{.HostConfig.NanoCpus}}' node-app
+
+Scenario: Your Kubernetes cluster shows containers restarting frequently because healthchecks fail intermittently.
+
+Task:
+
+Inspect current healthcheck configuration
+Adjust interval, timeout, retries, start_period based on your app's actual startup time
+Verify the healthcheck passes consistently after deployment
+
+Ans:
+To inspect health of container: docker inspect container-name
+
+HEALTHCHECK --interval=30s --retries=3 --timeout=10s --start-period=40s
+
+CMD curl -f http://localhost:3000/health || exit 1  
+
+Inspect health status also with:docker inspect --format='({.State.Health.Status})' container-name
